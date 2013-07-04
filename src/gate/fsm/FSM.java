@@ -16,6 +16,7 @@
 
 package gate.fsm;
 
+import java.io.PrintWriter;
 import java.util.*;
 
 import gate.jape.*;
@@ -761,7 +762,7 @@ public class FSM implements JapeConstants {
   /**
     * The set of states for this FSM
     */
-  private transient Collection allStates =  new HashSet();
+  private transient Collection<State> allStates =  new HashSet<State>();
 
   //kalina: added this member here to minimise HashMap allocation
   private transient Map<AbstractSet,State> newStates = new HashMap<AbstractSet,State>();
@@ -846,5 +847,36 @@ public class FSM implements JapeConstants {
 
   int bpeId = 0;
   public HashMap<String,String> ruleHash = new HashMap<String,String>();
+  
+  private String escape(String s) {
+    StringBuilder sb = new StringBuilder();
+    for(int i = 0; i < s.length(); i++) {
+      char ch = s.charAt(i);
+      if(ch == '"')
+        sb.append("\\");
+      sb.append(ch);
+    }
+    
+    return sb.toString();
+  }
+  
+  public void toDotFile(PrintWriter pw) {
+    pw.println("digraph finite_state_machine {");
+    pw.println("rankdir=LR;");
+    pw.println("node [shape=circle]");
+    
+    for(State s : allStates) {
+      for(Transition t : s.getTransitions()) {
+        pw.printf("%d -> %d [label=\"%s\"];%n", s.myIndex, t.getTarget().myIndex, escape(t.getConstraints().toString()));
+      }
+      
+      if(s.isFinal()) {
+        pw.printf("%d [shape=doublecircle];%n", s.myIndex);
+      }
+    }
+
+    pw.println("}");
+
+  }
   //added by Karter end
 } // FSM

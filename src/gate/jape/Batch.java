@@ -337,5 +337,12 @@ public class Batch implements JapeConstants, Benchmarkable {
       Controller c, Ontology o) throws ExecutionException {
     transducer.runControllerExecutionStartedBlock(ac, c, o);
   }
+  
+  public void toDot(String prefixName) throws IOException {
+    if(transducer instanceof MultiPhaseTransducer) {
+      MultiPhaseTransducer t = (MultiPhaseTransducer) transducer;
+      t.toDot(prefixName);
+    }
+  }
 } // class Batch
 

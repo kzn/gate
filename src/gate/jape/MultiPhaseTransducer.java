@@ -30,6 +30,9 @@ import gate.util.Err;
 import gate.util.GateClassLoader;
 import gate.util.Strings;
 
+import java.io.FileNotFoundException;
+import java.io.IOException;
+import java.io.PrintWriter;
 import java.util.ArrayList;
 import java.util.Iterator;
 
@@ -273,6 +276,18 @@ implements JapeConstants, java.io.Serializable
     for(Iterator i = phases.iterator(); i.hasNext(); ) {
       Transducer t = (Transducer) i.next();
       t.runControllerExecutionAbortedBlock(ac, c,throwable, o);
+    }
+  }
+  
+  public void toDot(String prefixName) throws IOException {
+    for(Transducer t : (ArrayList<Transducer>) phases) {
+      if(t instanceof MultiPhaseTransducer) {
+        ((MultiPhaseTransducer)t).toDot(prefixName + "_1");
+      } else if(t instanceof SinglePhaseTransducer) {
+        PrintWriter pw = new PrintWriter(prefixName + t.name + ".dot");
+        ((SinglePhaseTransducer)t).getFSM().toDotFile(pw);
+        pw.close();
+      }
     }
   }
 

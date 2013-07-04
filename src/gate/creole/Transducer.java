@@ -601,6 +601,10 @@ public class Transducer
     actionContext.setController(null);
     actionContext.setPR(null);
   }
+  
+  public void toDot(String prefix) throws IOException {
+    batch.toDot(prefix);
+  }
 
 
 }
