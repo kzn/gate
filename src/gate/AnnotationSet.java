@@ -11,7 +11,7 @@
  *
  *  Hamish Cunningham, 7/Feb/2000
  *
- *  $Id: AnnotationSet.java 15333 2012-02-07 13:18:33Z ian_roberts $
+ *  $Id: AnnotationSet.java 16713 2013-06-28 15:21:53Z johann_p $
  */
 
 package gate;
@@ -21,6 +21,7 @@ import gate.event.GateListener;
 import gate.util.InvalidOffsetException;
 
 import java.io.Serializable;
+import java.util.List;
 import java.util.Set;
 
 /**
@@ -224,6 +225,16 @@ public interface AnnotationSet extends SimpleAnnotationSet, Serializable {
    */
   public AnnotationSet getContained(Long startOffset, Long endOffset);
 
+  /**
+   * Return a list of annotations sorted by increasing start offset, i.e. in the order
+   * they appear in the document. If more than one annotation starts at a specific offset
+   * the order of these annotations is unspecified.
+   * 
+   * @return a list of annotations ordered by increasing start offset.
+   */
+  public List<Annotation> inDocumentOrder();
+  
+  
   /**
    * Get the node with the smallest offset
    */
