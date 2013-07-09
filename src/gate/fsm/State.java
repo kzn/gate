@@ -16,9 +16,11 @@
 
 package gate.fsm;
 
+import java.io.PrintWriter;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Iterator;
+import java.util.Set;
 
 import gate.jape.*;
 import gate.util.SimpleArraySet;
@@ -335,5 +337,43 @@ public class State implements JapeConstants {
    *
    */
   protected int priority = -1;
+  
+  private String escape(String s) {
+    StringBuilder sb = new StringBuilder();
+    for(int i = 0; i < s.length(); i++) {
+      char ch = s.charAt(i);
+      if(ch == '"')
+        sb.append("\\");
+      sb.append(ch);
+    }
+    
+    return sb.toString();
+  }
+
+
+  public void toDot(PrintWriter pw, Set<State> visited) {
+    if(visited.contains(this))
+      return;
+    
+    visited.add(this);
+    
+    for(Transition t : getTransitions()) {
+      pw.printf("%d -> %d [label=\"%s\"];%n", myIndex, t.getTarget().myIndex, escape(t.getConstraints() != null? t.getConstraints().toString() : "null"));
+    }
+    
+    for(Transition t : getTransitions()) {
+      t.getTarget().toDot(pw, visited);
+    }
+
+    
+    
+    if(isFinal()) {
+      pw.printf("%d [shape=doublecircle];%n", myIndex);
+    }
+
+    
+
+    
+  }
 
 } // State

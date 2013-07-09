@@ -16,6 +16,7 @@
 
 package gate.fsm;
 
+import java.io.IOException;
 import java.io.PrintWriter;
 import java.util.*;
 
@@ -80,6 +81,7 @@ public class FSM implements JapeConstants {
 
     while(rulesEnum.hasNext()){
       FSM ruleFSM = spawn((Rule) rulesEnum.next());
+      ruleFSM.toDot("test.dot");
 
       //added by Karter start -> JapeDebugger
       ruleHash.putAll(ruleFSM.ruleHash);
@@ -860,6 +862,15 @@ public class FSM implements JapeConstants {
     return sb.toString();
   }
   
+  public void toDot(PrintWriter pw) {
+    pw.println("digraph finite_state_machine {");
+    pw.println("rankdir=LR;");
+    pw.println("node [shape=circle]");
+    initialState.toDot(pw, new HashSet<State>());
+    pw.println("}");
+
+  }
+  
   public void toDotFile(PrintWriter pw) {
     pw.println("digraph finite_state_machine {");
     pw.println("rankdir=LR;");
@@ -878,5 +889,26 @@ public class FSM implements JapeConstants {
     pw.println("}");
 
   }
+  
+  public void toDotFile(String fileName) {
+    try {
+      PrintWriter pw = new PrintWriter(fileName);
+      toDotFile(pw);
+      pw.close();
+    } catch(IOException e) {
+      
+    }
+  }
+  
+  public void toDot(String fileName) {
+    try {
+      PrintWriter pw = new PrintWriter(fileName);
+      toDot(pw);
+      pw.close();
+    } catch(IOException e) {
+      
+    }
+  }
+
   //added by Karter end
 } // FSM
