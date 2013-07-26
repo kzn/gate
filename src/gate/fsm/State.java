@@ -16,14 +16,16 @@
 
 package gate.fsm;
 
+import gate.jape.BasicPatternElement;
+import gate.jape.JapeConstants;
+import gate.jape.RightHandSide;
+import gate.util.SimpleArraySet;
+
 import java.io.PrintWriter;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Set;
-
-import gate.jape.*;
-import gate.util.SimpleArraySet;
 
 /**
  * This class implements a Finite State Machine state.
@@ -272,7 +274,8 @@ public class State implements JapeConstants {
    *
    * @return a String value.
    */
-  public String toString() {
+  @Override
+public String toString() {
 ///    String res = "State " + myIndex;
     StringBuffer res = new StringBuffer(gate.Gate.STRINGBUFFER_SIZE);
 
@@ -300,7 +303,7 @@ public class State implements JapeConstants {
   private Set transitions = new HashSet();
 */
 // >>> DAM, TransArray optimization
-  private SimpleArraySet<Transition> transitions = new SimpleArraySet<Transition>();
+  private final SimpleArraySet<Transition> transitions = new SimpleArraySet<Transition>();
 // >>> DAM, end
 
   /**
@@ -338,12 +341,18 @@ public class State implements JapeConstants {
    */
   protected int priority = -1;
   
-  private String escape(String s) {
+  protected String escape(String s) {
     StringBuilder sb = new StringBuilder();
     for(int i = 0; i < s.length(); i++) {
       char ch = s.charAt(i);
       if(ch == '"')
         sb.append("\\");
+      
+      if(ch == '\n' || ch == '\r') {
+    	  sb.append(" ");
+    	  continue;
+      }
+
       sb.append(ch);
     }
     
@@ -358,7 +367,12 @@ public class State implements JapeConstants {
     visited.add(this);
     
     for(Transition t : getTransitions()) {
-      pw.printf("%d -> %d [label=\"%s\"];%n", myIndex, t.getTarget().myIndex, escape(t.getConstraints() != null? t.getConstraints().toString() : "null"));
+      pw.printf("%d -> %d [label=\"%s[%s]\"];%n", 
+    		  myIndex, 
+    		  t.getTarget().myIndex, 
+    		  escape(t.getConstraints() != null? t.getConstraints().toString() : "null"),
+    		  escape(t.getBindings().toString())
+    		  );
     }
     
     for(Transition t : getTransitions()) {

@@ -16,14 +16,37 @@
 
 package gate.fsm;
 
-import java.io.IOException;
-import java.io.PrintWriter;
-import java.util.*;
-
-import gate.jape.*;
+import static gate.jape.KleeneOperator.Type.OPTIONAL;
+import static gate.jape.KleeneOperator.Type.PLUS;
+import static gate.jape.KleeneOperator.Type.RANGE;
+import static gate.jape.KleeneOperator.Type.STAR;
+import gate.jape.BasicPatternElement;
+import gate.jape.ComplexPatternElement;
+import gate.jape.Constraint;
+import gate.jape.ConstraintGroup;
+import gate.jape.JapeConstants;
+import gate.jape.KleeneOperator;
+import gate.jape.LeftHandSide;
+import gate.jape.PatternElement;
+import gate.jape.PrioritisedRuleList;
+import gate.jape.RightHandSide;
+import gate.jape.Rule;
+import gate.jape.SinglePhaseTransducer;
 import gate.util.Benchmark;
 import gate.util.SimpleArraySet;
-import static gate.jape.KleeneOperator.Type.*;
+
+import java.io.IOException;
+import java.io.PrintWriter;
+import java.util.AbstractSet;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Iterator;
+import java.util.LinkedList;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 
 /**
   * This class implements a standard Finite State Machine.
@@ -31,7 +54,7 @@ import static gate.jape.KleeneOperator.Type.*;
   */
 public class FSM implements JapeConstants {
   
-  private ArrayList<RuleTime> ruleTimes = new ArrayList<RuleTime>();
+  private final ArrayList<RuleTime> ruleTimes = new ArrayList<RuleTime>();
   
   public ArrayList<RuleTime> getRuleTimes() {
     return ruleTimes;
@@ -450,7 +473,7 @@ public class FSM implements JapeConstants {
     while(innerStatesIter.hasNext()){
       State currentInnerState = (State)innerStatesIter.next();
       if(currentInnerState.isFinal()){
-        action = (RightHandSide)currentInnerState.getAction();
+        action = currentInnerState.getAction();
         initialState.setAction(action);
         initialState.setFileIndex(currentInnerState.getFileIndex());
         initialState.setPriority(currentInnerState.getPriority());
@@ -488,7 +511,7 @@ public class FSM implements JapeConstants {
 
                 if(currentInnerState.isFinal()) {
                   newState.setAction(
-                          (RightHandSide)currentInnerState.getAction());
+                          currentInnerState.getAction());
                   newState.setFileIndex(currentInnerState.getFileIndex());
                   newState.setPriority(currentInnerState.getPriority());
                   break;
@@ -496,8 +519,8 @@ public class FSM implements JapeConstants {
               }
             }// if(!dStates.contains(newDState))
 
-            State currentState = (State)newStates.get(currentDState);
-            State newState = (State)newStates.get(newDState);
+            State currentState = newStates.get(currentDState);
+            State newState = newStates.get(newDState);
             currentState.addTransition(new Transition(
                                         currentTrans.getConstraints(),
                                         newState,
@@ -549,7 +572,7 @@ public class FSM implements JapeConstants {
     Transition currentTransition;
     State currentState;
     while(!list.isEmpty()){
-      top = (State)list.removeFirst();
+      top = list.removeFirst();
       transIter = top.getTransitions().iterator();
 
       while(transIter.hasNext()){
@@ -586,7 +609,7 @@ public class FSM implements JapeConstants {
 
     stackToProcess.add(initialState);
     while (!stackToProcess.isEmpty()) {
-      currentState = (State) stackToProcess.iterator().next();
+      currentState = stackToProcess.iterator().next();
       stackToProcess.remove(currentState);
       processed.add(currentState);
 
@@ -619,7 +642,7 @@ public class FSM implements JapeConstants {
 
     stackToProcess.add(initialState);
     while (!stackToProcess.isEmpty()) {
-      currentState = (State) stackToProcess.iterator().next();
+      currentState = stackToProcess.iterator().next();
       stackToProcess.remove(currentState);
       processed.add(currentState);
 
@@ -742,7 +765,8 @@ public class FSM implements JapeConstants {
   /**
     * Returns a textual description of this FSM.
     */
-  public String toString(){
+  @Override
+public String toString(){
     String res = "Starting from:" + initialState.getIndex() + "\n";
     Iterator stateIter = allStates.iterator();
     while (stateIter.hasNext()){
@@ -850,12 +874,15 @@ public class FSM implements JapeConstants {
   int bpeId = 0;
   public HashMap<String,String> ruleHash = new HashMap<String,String>();
   
-  private String escape(String s) {
+  protected String escape(String s) {
     StringBuilder sb = new StringBuilder();
     for(int i = 0; i < s.length(); i++) {
       char ch = s.charAt(i);
       if(ch == '"')
         sb.append("\\");
+      
+      if(ch == '\n' || ch == '\r')
+    	  sb.append(" ");
       sb.append(ch);
     }
     
@@ -869,35 +896,6 @@ public class FSM implements JapeConstants {
     initialState.toDot(pw, new HashSet<State>());
     pw.println("}");
 
-  }
-  
-  public void toDotFile(PrintWriter pw) {
-    pw.println("digraph finite_state_machine {");
-    pw.println("rankdir=LR;");
-    pw.println("node [shape=circle]");
-    
-    for(State s : allStates) {
-      for(Transition t : s.getTransitions()) {
-        pw.printf("%d -> %d [label=\"%s\"];%n", s.myIndex, t.getTarget().myIndex, escape(t.getConstraints().toString()));
-      }
-      
-      if(s.isFinal()) {
-        pw.printf("%d [shape=doublecircle];%n", s.myIndex);
-      }
-    }
-
-    pw.println("}");
-
-  }
-  
-  public void toDotFile(String fileName) {
-    try {
-      PrintWriter pw = new PrintWriter(fileName);
-      toDotFile(pw);
-      pw.close();
-    } catch(IOException e) {
-      
-    }
   }
   
   public void toDot(String fileName) {

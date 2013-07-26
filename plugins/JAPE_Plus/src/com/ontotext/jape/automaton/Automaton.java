@@ -16,6 +16,7 @@ import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.OutputStreamWriter;
+import java.io.PrintWriter;
 
 import com.ontotext.jape.pda.StatePDA;
 import com.ontotext.jape.pda.TransitionPDA;
@@ -327,27 +328,31 @@ public class Automaton {
 	}
 
 	protected AutomatonMinimizationHelp hopcroftMinimize(int labelsStored) {
-		int i, j;
-		for (i = 0; i < transitionsStored; i++) {
-			j = transitionsFrom[i];
+		// reverse transitions
+		for (int i = 0; i < transitionsStored; i++) {
+			int j = transitionsFrom[i];
 			transitionsFrom[i] = transitionsTo[i];
 			transitionsTo[i] = j;
 		}
 		sortTransitions();
-		IntSequence classes = new IntSequence();
-		j = 0;
-		for (i = 0; i < statesStored; i++) {
+		
+		IntSequence classes = new IntSequence(); // существующие классы. изначально - final - каждый в отдельный класс
+		int classCount = 0;
+		for (int i = 0; i < statesStored; i++) {
 			if (stateFinalities.elementAt(i) != Constants.NO) {
-				j++;
+				classCount++;
 			}
 			classes.addIfDoesNotExsist(stateFinalities.elementAt(i));
 		}
-		AutomatonMinimizationHelp mHelp = new AutomatonMinimizationHelp(
-				statesStored);
-		if (j == 0) {
+
+		AutomatonMinimizationHelp mHelp = new AutomatonMinimizationHelp(statesStored);
+		
+		if (classCount == 0) {
 			return mHelp;
 		}
-		for (j = 0; j < classes.seqStored; j++) {
+
+		// инициализаця данных о минимизации
+		for (int j = 0; j < classes.seqStored; j++) {
 			mHelp.classesFirstState[j] = Constants.NO;
 			mHelp.classesNewClass[j] = Constants.NO;
 			mHelp.classesNewPower[j] = 0;
@@ -356,11 +361,15 @@ public class Automaton {
 			mHelp.classesNext[j] = Constants.NO;
 		}
 		mHelp.classesStored = classes.seqStored;
-		for (i = 0; i < statesStored; i++) {
+
+		// добавить состояния по классам
+		for (int i = 0; i < statesStored; i++) {
 			mHelp.addState(i, classes.contains(stateFinalities.elementAt(i)));
 		}
-		for (i = 1; i < labelsStored; i++) {
-			for (j = 0; j < mHelp.classesStored; j++) {
+
+		// добавить метки переходов (по классам)?
+		for (int i = 1; i < labelsStored; i++) {
+			for (int j = 0; j < mHelp.classesStored; j++) {
 				mHelp.addLetter(j, i);
 			}
 		}
@@ -368,20 +377,23 @@ public class Automaton {
 		classes.seqStored = 0;
 		GenericWholeArrray alph = new GenericWholeArrray(
 				GenericWholeArrray.TYPE_BIT, labelsStored);
-		int q1, a, state, tr, q0;
+
 		while (mHelp.firstClass != Constants.NO) {
-			q1 = mHelp.firstClass;
-			a = mHelp.lettersLetter[mHelp.classesFirstLetter[q1]];
+			int q1 = mHelp.firstClass; 
+			int a = mHelp.lettersLetter[mHelp.classesFirstLetter[q1]];
 			mHelp.classesFirstLetter[q1] = mHelp.lettersNext[mHelp.classesFirstLetter[q1]];
+			
 			if (mHelp.classesFirstLetter[q1] == Constants.NO) {
 				mHelp.firstClass = mHelp.classesNext[q1];
 			}
+			
 			classes.seqStored = 0;
 			states.seqStored = 0;
-			for (state = mHelp.classesFirstState[q1]; state != Constants.NO; state = mHelp.statesNext[state]) {
-				for (tr = getNextTransition(state, a, Constants.NO); tr != Constants.NO; tr = getNextTransition(
+			
+			for (int state = mHelp.classesFirstState[q1]; state != Constants.NO; state = mHelp.statesNext[state]) {
+				for (int tr = getNextTransition(state, a, Constants.NO); tr != Constants.NO; tr = getNextTransition(
 						state, a, tr)) {
-					q0 = mHelp.statesClassNumber[transitionsTo[tr]];
+					int q0 = mHelp.statesClassNumber[transitionsTo[tr]];
 					states.add(transitionsTo[tr]);
 					if (mHelp.classesNewPower[q0] == 0) {
 						classes.add(q0);
@@ -389,8 +401,9 @@ public class Automaton {
 					mHelp.classesNewPower[q0]++;
 				}
 			}
-			for (j = 0; j < states.seqStored; j++) {
-				q0 = mHelp.statesClassNumber[states.seq[j]];
+			
+			for (int j = 0; j < states.seqStored; j++) {
+				int q0 = mHelp.statesClassNumber[states.seq[j]];
 				if (mHelp.classesNewPower[q0] == mHelp.classesPower[q0]) {
 					continue;
 				}
@@ -409,19 +422,20 @@ public class Automaton {
 				}
 				mHelp.moveState(states.seq[j], mHelp.classesNewClass[q0]);
 			}
-			for (i = 0; i < classes.seqStored; i++) {
-				q0 = classes.seq[i];
+			
+			for (int i = 0; i < classes.seqStored; i++) {
+				int q0 = classes.seq[i];
 				if (mHelp.classesNewPower[q0] != mHelp.classesPower[q0]) {
 					mHelp.classesPower[q0] -= mHelp.classesNewPower[q0];
-					for (j = 1; j < labelsStored; j++) {
+					for (int j = 1; j < labelsStored; j++) {
 						alph.setElement(j, 0);
 					}
-					for (j = mHelp.classesFirstLetter[q0]; j != Constants.NO; j = mHelp.lettersNext[j]) {
+					for (int j = mHelp.classesFirstLetter[q0]; j != Constants.NO; j = mHelp.lettersNext[j]) {
 						mHelp.addLetter(mHelp.classesNewClass[q0],
 								mHelp.lettersLetter[j]);
 						alph.setElement(mHelp.lettersLetter[j], Constants.NO);
 					}
-					for (j = 1; j < labelsStored; j++) {
+					for (int j = 1; j < labelsStored; j++) {
 						if (alph.elementAt(j) == Constants.NO) {
 							continue;
 						}
@@ -432,6 +446,7 @@ public class Automaton {
 						}
 					}
 				}
+
 				mHelp.classesNewPower[q0] = 0;
 				mHelp.classesNewClass[q0] = Constants.NO;
 			}
@@ -808,5 +823,27 @@ public class Automaton {
 			fsmStates[i].setItFinal(null);
 		}
 		return fsmStates;
+	}
+	
+	public void toDot(String fileName) throws IOException {
+		PrintWriter pw = new PrintWriter(fileName);
+	    pw.println("digraph finite_state_machine {");
+	    pw.println("rankdir=LR;");
+	    pw.println("node [shape=circle]");
+
+		for(int i = 0; i < transitionsStored; i++) {
+		      pw.printf("%d -> %d [label=\"%d\"];%n", 
+		    		  transitionsFrom[i],
+		    		  transitionsTo[i],
+		    		  transitionsLabel.elementAt(transitionsLabel.elementAt(i))
+		    		  );
+		}
+		
+		for(int i = 0; i < statesStored; i++) {
+			if(stateFinalities.elementAt(i) != Constants.NO)
+		      pw.printf("%d [shape=doublecircle];%n", i);
+		}
+	    pw.println("}");
+		pw.close();
 	}
 }

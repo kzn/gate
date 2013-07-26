@@ -21,26 +21,26 @@ package com.ontotext.jape.automaton;
  */
 public class AutomatonMinimizationHelp {
 	// states:
-	protected int[] statesClassNumber;
-	protected int[] statesNext;
-	protected int[] statesPrev;
-	protected int statesStored;
+	protected int[] statesClassNumber; // state -> class
+	protected int[] statesNext; // следующее состояния данного класса
+	protected int[] statesPrev; // предыдущее состояние этого класса
+	protected int statesStored; // число классов
 
 	// classes:
-	protected int[] classesFirstState;
-	protected int[] classesPower;
+	protected int[] classesFirstState; // номер первого состояния для класса i
+	protected int[] classesPower; // размер класса (число состояний в классе)
 	protected int[] classesNewPower;
 	protected int[] classesNewClass;
 	protected int[] classesFirstLetter;
 	protected int[] classesNext;
-	protected int classesStored;
+	protected int classesStored; // число классов
 	protected int classesAlloced;
 	protected int firstClass;
 
 	// letters:
 	protected int[] lettersLetter;
 	protected int[] lettersNext;
-	protected int lettersStored;
+	protected int lettersStored; // число меток перехода
 	protected int lettersAlloced;
 
 	protected AutomatonMinimizationHelp(int statesStored) {
@@ -62,12 +62,27 @@ public class AutomatonMinimizationHelp {
 		lettersLetter = new int[lettersAlloced];
 		lettersNext = new int[lettersAlloced];
 	}
-
+	
+	/*
+	 * Процедуры строят цепочки состояний и переходов в обратном порядке.
+	 * Т.е. firstClass - на самом деле последнее по порядку добавления.
+	 * Таким образом получается, что идут цепочки:
+	 * 1. классов. от firstClass по classsesNext
+	 * 2. classesFirstState - первое состояние класса. Можно обходить по classes[
+	 */
+	/**
+	 * Adds state to given state class
+	 * 
+	 * @param state state number
+	 * @param classToAdd class number
+	 */
 	protected void addState(int state, int classToAdd) {
 		statesNext[state] = classesFirstState[classToAdd];
+		
 		if (classesFirstState[classToAdd] != Constants.NO) {
 			statesPrev[classesFirstState[classToAdd]] = state;
 		}
+		
 		statesPrev[state] = Constants.NO;
 		statesClassNumber[state] = classToAdd;
 		classesFirstState[classToAdd] = state;
@@ -75,6 +90,7 @@ public class AutomatonMinimizationHelp {
 	}
 
 	protected void addLetter(int classToAdd, int letter) {
+		// reallocate letters if needed
 		if (lettersStored == lettersAlloced) {
 			int mem = lettersAlloced + lettersAlloced / 4;
 			lettersLetter = GenericWholeArrray.realloc(lettersLetter, mem,
@@ -83,10 +99,13 @@ public class AutomatonMinimizationHelp {
 					lettersStored);
 			lettersAlloced = mem;
 		}
+		
+		// установить первую метку перехода для класса
 		if (classesFirstLetter[classToAdd] == Constants.NO) {
 			classesNext[classToAdd] = firstClass;
 			firstClass = classToAdd;
 		}
+		
 		lettersLetter[lettersStored] = letter;
 		lettersNext[lettersStored] = classesFirstLetter[classToAdd];
 		classesFirstLetter[classToAdd] = lettersStored;
@@ -95,18 +114,13 @@ public class AutomatonMinimizationHelp {
 
 	protected void reallocClasses() {
 		int mem = classesAlloced + classesAlloced / 4;
-		classesFirstState = GenericWholeArrray.realloc(classesFirstState, mem,
-				classesStored);
-		classesPower = GenericWholeArrray.realloc(classesPower, mem,
-				classesStored);
-		classesNewPower = GenericWholeArrray.realloc(classesNewPower, mem,
-				classesStored);
-		classesNewClass = GenericWholeArrray.realloc(classesNewClass, mem,
-				classesStored);
-		classesFirstLetter = GenericWholeArrray.realloc(classesFirstLetter,
-				mem, classesStored);
-		classesNext = GenericWholeArrray.realloc(classesNext, mem,
-				classesStored);
+		
+		classesFirstState = GenericWholeArrray.realloc(classesFirstState, mem, classesStored);
+		classesPower = GenericWholeArrray.realloc(classesPower, mem, classesStored);
+		classesNewPower = GenericWholeArrray.realloc(classesNewPower, mem, classesStored);
+		classesNewClass = GenericWholeArrray.realloc(classesNewClass, mem, classesStored);
+		classesFirstLetter = GenericWholeArrray.realloc(classesFirstLetter, mem, classesStored);
+		classesNext = GenericWholeArrray.realloc(classesNext, mem, classesStored);
 		classesAlloced = mem;
 	}
 

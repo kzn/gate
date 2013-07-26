@@ -30,7 +30,6 @@ import gate.util.Err;
 import gate.util.GateClassLoader;
 import gate.util.Strings;
 
-import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.util.ArrayList;
@@ -60,7 +59,8 @@ implements JapeConstants, java.io.Serializable
   /**
    * Notifies this PR that it should stop its execution as soon as possible.
    */
-  public synchronized void interrupt(){
+  @Override
+public synchronized void interrupt(){
     interrupted = true;
     Iterator phasesIter = phases.iterator();
     while(phasesIter.hasNext()){
@@ -87,7 +87,8 @@ implements JapeConstants, java.io.Serializable
    * Sets the ontology used by this transducer;
    * @param ontology an {@link gate.creole.ontology.Ontology} value;
    */
-  public void setOntology(Ontology ontology) {
+  @Override
+public void setOntology(Ontology ontology) {
     super.setOntology(ontology);
     Iterator phasesIter = phases.iterator();
     while(phasesIter.hasNext()){
@@ -126,26 +127,30 @@ implements JapeConstants, java.io.Serializable
   /** Finish: replace dynamic data structures with Java arrays; called
     * after parsing.
     */
-  public void finish(GateClassLoader classloader){
+  @Override
+public void finish(GateClassLoader classloader){
     for(Iterator i = phases.iterator(); i.hasNext(); )
       ((Transducer) i.next()).finish(classloader);
   } // finish
 
 
   /** Transduce the document by running each phase in turn. */
-  public void transduce(Document doc, AnnotationSet input,
+  @Override
+public void transduce(Document doc, AnnotationSet input,
                         AnnotationSet output) throws JapeException,
                                                      ExecutionException {
     interrupted = false;
     ProgressListener pListener = null;
     StatusListener sListener = null;
     pListener = new ProgressListener(){
-      public void processFinished(){
+      @Override
+	public void processFinished(){
         donePhases ++;
         if(donePhases == phasesCnt) fireProcessFinished();
       }
 
-      public void progressChanged(int i){
+      @Override
+	public void progressChanged(int i){
         int value = (donePhases * 100 + i)/phasesCnt;
         fireProgressChanged(value);
       }
@@ -155,7 +160,8 @@ implements JapeConstants, java.io.Serializable
     };
 
     sListener = new StatusListener(){
-      public void statusChanged(String text){
+      @Override
+	public void statusChanged(String text){
         fireStatusChanged(text);
       }
     };
@@ -201,7 +207,8 @@ implements JapeConstants, java.io.Serializable
     cleanUp();
   } // transduce
 
-  public void setEnableDebugging(boolean enableDebugging) {
+  @Override
+public void setEnableDebugging(boolean enableDebugging) {
     this.enableDebugging = enableDebugging;
     //propagate
     for(int i = 0; i < phases.size(); i++){
@@ -211,7 +218,8 @@ implements JapeConstants, java.io.Serializable
 
 
   /** Ask each phase to clean up (delete action class files, for e.g.). */
-  public void cleanUp() {
+  @Override
+public void cleanUp() {
 
     for(Iterator i = phases.iterator(); i.hasNext(); )
       ((Transducer) i.next()).cleanUp();
@@ -221,10 +229,12 @@ implements JapeConstants, java.io.Serializable
   } // cleanUp
 
   /** Create a string representation of the object. */
-  public String toString() { return toString(""); }
+  @Override
+public String toString() { return toString(""); }
 
   /** Create a string representation of the object. */
-  public String toString(String pad) {
+  @Override
+public String toString(String pad) {
     String newline = Strings.getNl();
 
     StringBuffer buf = new StringBuffer(
@@ -285,7 +295,7 @@ implements JapeConstants, java.io.Serializable
         ((MultiPhaseTransducer)t).toDot(prefixName + "_1");
       } else if(t instanceof SinglePhaseTransducer) {
         PrintWriter pw = new PrintWriter(prefixName + t.name + ".dot");
-        ((SinglePhaseTransducer)t).getFSM().toDotFile(pw);
+        ((SinglePhaseTransducer)t).getFSM().toDot(pw);
         pw.close();
       }
     }

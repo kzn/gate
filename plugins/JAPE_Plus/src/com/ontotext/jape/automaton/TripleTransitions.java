@@ -26,10 +26,15 @@ import com.ontotext.jape.pda.TransitionPDA;
  * 
  */
 public class TripleTransitions {
+	
+	/// hashes for states, labels
 	protected WholeSet states;
 	protected ClosedHashOfLabels labels;
+	
+	// set of finals states [0.. finalitiesStored] allocated, rest is null
 	protected StatePDA[] finalities;
-	protected int finalitiesStored;
+	
+	protected int finalitiesStored; // number of finals states 
 	protected int[] stateFinalities;
 	protected int[] transitionsFrom;
 	protected int[] transitionsLabel;
