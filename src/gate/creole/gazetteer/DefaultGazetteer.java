@@ -29,7 +29,6 @@ import gate.creole.ResourceInstantiationException;
 import gate.creole.metadata.CreoleParameter;
 import gate.creole.metadata.CreoleResource;
 import gate.creole.metadata.Optional;
-import gate.creole.metadata.RunTime;
 import gate.util.GateRuntimeException;
 import gate.util.InvalidOffsetException;
 import gate.util.Strings;
@@ -108,6 +107,7 @@ public class DefaultGazetteer extends AbstractGazetteer
   /** Does the actual loading and parsing of the lists. This method must be
    * called before the gazetteer can be used
    */
+  @Override
   public Resource init()throws ResourceInstantiationException{
     fsmStates = new HashSet();
     initialState = new FSMState(this);
@@ -301,19 +301,20 @@ public class DefaultGazetteer extends AbstractGazetteer
    * This method runs the gazetteer. It assumes that all the needed parameters
    * are set. If they are not, an exception will be fired.
    */
+  @Override
   public void execute() throws ExecutionException{
     interrupted = false;
     AnnotationSet annotationSet;
     //check the input
     if(document == null) {
-      throw new ExecutionException(
-        "No document to process!"
-      );
+      throw new ExecutionException("No document to process!");
     }
 
-    if(annotationSetName == null ||
-       annotationSetName.equals("")) annotationSet = document.getAnnotations();
-    else annotationSet = document.getAnnotations(annotationSetName);
+    if(annotationSetName == null || annotationSetName.equals("")) {
+      annotationSet = document.getAnnotations();
+    } else {
+      annotationSet = document.getAnnotations(annotationSetName);
+    }
 
     fireStatusChanged("Performing look-up in " + document.getName() + "...");
     String content = document.getContent().toString();
@@ -331,32 +332,34 @@ public class DefaultGazetteer extends AbstractGazetteer
 
     while(charIdx < length) {
       currentChar = content.charAt(charIdx);
-      if( Character.isSpaceChar(currentChar) || Character.isWhitespace(currentChar) ) currentChar = ' ';
-      else currentChar = caseSensitive.booleanValue() ?
-                          currentChar :
-                          Character.toUpperCase(currentChar);
+      
+      if(Character.isSpaceChar(currentChar) || Character.isWhitespace(currentChar)) {
+        currentChar = ' ';
+      } else {
+        currentChar = caseSensitive.booleanValue()? currentChar : Character.toUpperCase(currentChar);
+      }
+      
       nextState = currentState.next(currentChar);
       if(nextState == null) {
         //the matching stopped
         //if we had a successful match then act on it;
-        if(lastMatchingState != null){
-          createLookups(lastMatchingState, matchedRegionStart, matchedRegionEnd, 
-                  annotationSet);
+        if(lastMatchingState != null) {
+          createLookups(lastMatchingState, matchedRegionStart, matchedRegionEnd, annotationSet);
           lastMatchingState = null;
         }
-        //reset the FSM
+        //reset the FSM (обходим каждую позицию т.е. сначала с 0, потом с 1, потом с 2)
         charIdx = matchedRegionStart + 1;
         matchedRegionStart = charIdx;
+        
         currentState = initialState;
-      } else{//go on with the matching
+      } else {//go on with the matching
         currentState = nextState;
         //if we have a successful state then store it
         if(currentState.isFinal() &&
            (
             (!wholeWordsOnly.booleanValue())
              ||
-            ((matchedRegionStart == 0 ||
-             !isWordInternal(content.charAt(matchedRegionStart - 1)))
+            ((matchedRegionStart == 0 || !isWordInternal(content.charAt(matchedRegionStart - 1)))
              &&
              (charIdx + 1 >= content.length()   ||
              !isWordInternal(content.charAt(charIdx + 1)))
@@ -464,6 +467,7 @@ public class DefaultGazetteer extends AbstractGazetteer
   /**lookup <br>
    * @param singleItem a single string to be looked up by the gazetteer
    * @return set of the Lookups associated with the parameter*/
+  @Override
   public Set lookup(String singleItem) {
     char currentChar;
     Set set = new HashSet();
@@ -483,6 +487,7 @@ public class DefaultGazetteer extends AbstractGazetteer
     return set;
   }
 
+  @Override
   public boolean remove(String singleItem) {
     char currentChar;
     FSMState currentState = initialState;
@@ -502,6 +507,7 @@ public class DefaultGazetteer extends AbstractGazetteer
     return true;
   }
 
+  @Override
   public boolean add(String singleItem, Lookup lookup) {
     addLookup(singleItem,lookup);
     return true;
@@ -511,6 +517,7 @@ public class DefaultGazetteer extends AbstractGazetteer
    * Use a {@link SharedDefaultGazetteer} to duplicate this gazetteer
    * by sharing the internal FSM rather than re-loading the lists.
    */
+  @Override
   public Resource duplicate(Factory.DuplicationContext ctx)
           throws ResourceInstantiationException {
     return Factory.createResource(SharedDefaultGazetteer.class.getName(),
