@@ -16,20 +16,44 @@
 
 package gate.jape;
 
-import java.util.*;
-
-import org.apache.log4j.Logger;
-
-import gate.*;
+import gate.Annotation;
+import gate.AnnotationSet;
+import gate.Controller;
+import gate.Corpus;
+import gate.CorpusController;
+import gate.Document;
+import gate.Gate;
+import gate.Node;
 import gate.annotation.AnnotationSetImpl;
 import gate.creole.ExecutionException;
 import gate.creole.ExecutionInterruptedException;
 import gate.creole.ontology.Ontology;
 import gate.event.ProgressListener;
-import gate.fsm.*;
-import gate.util.*;
+import gate.fsm.FSM;
+import gate.fsm.FSMInstance;
+import gate.fsm.RuleTime;
+import gate.fsm.State;
+import gate.fsm.Transition;
+import gate.util.Benchmark;
+import gate.util.GateClassLoader;
+import gate.util.GateRuntimeException;
+import gate.util.SimpleSortedSet;
+import gate.util.Strings;
+
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.Iterator;
+import java.util.LinkedList;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.Vector;
 import java.util.concurrent.atomic.AtomicInteger;
+
+import org.apache.log4j.Logger;
 
 /**
  * Represents a complete CPSL grammar, with a phase name, options and
@@ -76,8 +100,8 @@ public class SinglePhaseTransducer extends Transducer implements JapeConstants,
       this.acceptingFSMInstances = acceptingFSMInstances;
     }
     
-    private List<FSMInstance> acceptingFSMInstances;
-    private List<FSMInstance> activeFSMInstances;
+    private final List<FSMInstance> acceptingFSMInstances;
+    private final List<FSMInstance> activeFSMInstances;
     
   }
 
@@ -120,7 +144,7 @@ public class SinglePhaseTransducer extends Transducer implements JapeConstants,
   } // addRule
 
   /** The values of any option settings given. */
-  private Map<String, String> optionSettings = new HashMap<String, String>();
+  private final Map<String, String> optionSettings = new HashMap<String, String>();
 
   /**
    * Add an option setting. If this option is set already, the new value
@@ -142,7 +166,8 @@ public class SinglePhaseTransducer extends Transducer implements JapeConstants,
    * Finish: replace dynamic data structures with Java arrays; called
    * after parsing.
    */
-  public void finish(GateClassLoader classLoader) {
+  @Override
+public void finish(GateClassLoader classLoader) {
     // both MPT and SPT have finish called on them by the parser...
     if(finishedAlready) return;
     finishedAlready = true;
@@ -210,7 +235,8 @@ public class SinglePhaseTransducer extends Transducer implements JapeConstants,
    * Transduce a document using the annotation set provided and the
    * current rule application style.
    */
-  public void transduce(Document doc, AnnotationSet inputAS,
+  @Override
+public void transduce(Document doc, AnnotationSet inputAS,
           AnnotationSet outputAS) throws JapeException, ExecutionException {
     interrupted = false;
     log.debug("Start: " + name);
@@ -297,15 +323,7 @@ public class SinglePhaseTransducer extends Transducer implements JapeConstants,
                   + "\" Jape transducer has been abruptly interrupted!");
 
         // take the first active FSM instance
-        FSMInstance currentFSM = (FSMInstance)activeFSMInstances.remove(0);
-        // process the current FSM instance
-//        if(currentFSM.getFSMPosition().isFinal()) {
-//          // the current FSM is in a final state
-//          acceptingFSMInstances.add((FSMInstance)currentFSM.clone());
-//          // if we're only looking for the shortest stop here
-//          if(ruleApplicationStyle == FIRST_STYLE) break;
-//        }
-
+        FSMInstance currentFSM = activeFSMInstances.remove(0);
         FSMMatcherResult result = attemptAdvance(currentFSM, offsets,
                 annotationsByOffset, doc, inputAS);
         if(result != null){
@@ -377,7 +395,7 @@ public class SinglePhaseTransducer extends Transducer implements JapeConstants,
         newAcceptingInstances = new ArrayList<FSMInstance>();
       }
 //        newAcceptingInstances.add((FSMInstance)currentInstance.clone());
-      newAcceptingInstances.add((FSMInstance)currentClone);
+      newAcceptingInstances.add(currentClone);
       // if we're only looking for the shortest stop here
       if(ruleApplicationStyle == FIRST_STYLE ||
          ruleApplicationStyle == ONCE_STYLE ) {
@@ -832,18 +850,21 @@ public class SinglePhaseTransducer extends Transducer implements JapeConstants,
   } // fireRule
 
   /** Clean up (delete action class files, for e.g.). */
-  public void cleanUp() {
+  @Override
+public void cleanUp() {
     // for(DListIterator i = rules.begin(); ! i.atEnd(); i.advance())
     // ((Rule) i.get()).cleanUp();
   } // cleanUp
 
   /** A string representation of this object. */
-  public String toString() {
+  @Override
+public String toString() {
     return toString("");
   } // toString()
 
   /** A string representation of this object. */
-  public String toString(String pad) {
+  @Override
+public String toString(String pad) {
     String newline = Strings.getNl();
     String newPad = Strings.addPadding(pad, INDENT_PADDING);
 
@@ -912,7 +933,8 @@ public class SinglePhaseTransducer extends Transducer implements JapeConstants,
     return !input.isEmpty();
   }
 
-  public synchronized void removeProgressListener(ProgressListener l) {
+  @Override
+public synchronized void removeProgressListener(ProgressListener l) {
     if(progressListeners != null && progressListeners.contains(l)) {
       Vector v = (Vector)progressListeners.clone();
       v.removeElement(l);
@@ -920,7 +942,8 @@ public class SinglePhaseTransducer extends Transducer implements JapeConstants,
     }
   }
 
-  public synchronized void addProgressListener(ProgressListener l) {
+  @Override
+public synchronized void addProgressListener(ProgressListener l) {
     Vector v = progressListeners == null
             ? new Vector(2)
             : (Vector)progressListeners.clone();
@@ -943,7 +966,8 @@ public class SinglePhaseTransducer extends Transducer implements JapeConstants,
   // by Shafirin Andrey end
   private transient Vector progressListeners;
 
-  protected void fireProgressChanged(int e) {
+  @Override
+protected void fireProgressChanged(int e) {
     if(progressListeners != null) {
       Vector listeners = progressListeners;
       int count = listeners.size();
@@ -953,7 +977,8 @@ public class SinglePhaseTransducer extends Transducer implements JapeConstants,
     }
   }
 
-  protected void fireProcessFinished() {
+  @Override
+protected void fireProcessFinished() {
     if(progressListeners != null) {
       Vector listeners = progressListeners;
       int count = listeners.size();
