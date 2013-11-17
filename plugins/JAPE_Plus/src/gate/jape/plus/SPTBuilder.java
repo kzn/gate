@@ -58,7 +58,7 @@ public class SPTBuilder {
    * Flag used when debugging: set to true to enable dumping the generated code
    * to disk and printing of additional information. 
    */
-  private static final boolean DEBUG = false;
+  private static final boolean DEBUG = true;
   
   public static final String GENERATED_CLASS_PACKAGE = "japephases";
   

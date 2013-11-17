@@ -14,45 +14,47 @@
  */
 package gate.jape.plus;
 
+import gate.Annotation;
+import gate.AnnotationSet;
+import gate.Controller;
+import gate.Corpus;
+import gate.CorpusController;
+import gate.Factory;
+import gate.FeatureMap;
 import gate.annotation.AnnotationSetImpl;
-import gate.creole.*;
-import gate.creole.ontology.OClass;
-import gate.creole.ontology.OConstants;
-import gate.creole.ontology.OConstants.Closure;
-import gate.creole.ontology.OResource;
+import gate.creole.ANNIEConstants;
+import gate.creole.AbstractLanguageAnalyser;
+import gate.creole.ExecutionException;
+import gate.creole.ExecutionInterruptedException;
+import gate.creole.ResourceInstantiationException;
 import gate.creole.ontology.Ontology;
+import gate.jape.ActionContext;
+import gate.jape.ControllerEventBlocksAction;
+import gate.jape.DefaultActionContext;
 import gate.jape.JapeException;
 import gate.jape.Rule;
-import gate.jape.DefaultActionContext;
-import gate.jape.ActionContext;
-import gate.*;
+import gate.jape.constraint.ConstraintPredicate;
+import gate.jape.plus.Transducer.SinglePhaseTransducerPDA;
 
 import java.text.NumberFormat;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
-import java.util.HashSet;
-import java.util.LinkedHashMap;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
-import java.util.Map.Entry;
 import java.util.Set;
 import java.util.regex.Pattern;
 
 import org.apache.log4j.Logger;
 
-import com.ontotext.jape.pda.TransitionPDA;
-
-import cern.colt.GenericSorting;
 import cern.colt.Sorting;
-import cern.colt.Swapper;
 import cern.colt.bitvector.QuickBitVector;
 import cern.colt.function.IntComparator;
 import cern.colt.list.IntArrayList;
-import gate.jape.ControllerEventBlocksAction;
-import gate.jape.constraint.ConstraintPredicate;
+
+import com.ontotext.jape.pda.TransitionPDA;
 
 /**
  * An optimised implementation for a JAPE single phase transducer.
@@ -175,6 +177,7 @@ public abstract class SPTBase extends AbstractLanguageAnalyser {
       this.bindingStack = bindingStack;
     }
 
+    @Override
     public int compareTo(FSMInstance other) {
       // longest is better, hence the reversed test
       int res = other.annotationIndex - annotationIndex;
@@ -201,6 +204,7 @@ public abstract class SPTBase extends AbstractLanguageAnalyser {
       return res;
     }
 
+    @Override
     public FSMInstance clone() {
       Map<String, IntArrayList> bindsClone = new HashMap<String, IntArrayList>(bindings.size());
       for(Map.Entry<String, IntArrayList> anEntry : bindings.entrySet()) {
@@ -548,6 +552,7 @@ public abstract class SPTBase extends AbstractLanguageAnalyser {
     //an int comparator between annotation lists, that wraps the owner's 
     //comparator and handles the indirection
     IntComparator typeComparator = new IntComparator() {
+      @Override
       public int compare(int type1, int type2) {
         if(typeIndex[type1] >= annotsByType[type1].length){
           //first list out of annotations
@@ -1036,6 +1041,7 @@ public abstract class SPTBase extends AbstractLanguageAnalyser {
    * 
    * @throws ExecutionException
    */
+  @Override
   public void execute() throws ExecutionException {
     // fire the progress start event
     fireProgressChanged(0);
@@ -1175,38 +1181,57 @@ public abstract class SPTBase extends AbstractLanguageAnalyser {
 //            ((double)predicateHits / (predicateHits + predicateMisses))));
   }
 
+  /**
+   * Generate new active FSM Instances for given multiconstraint transition
+   * 
+   * The idea is: generated java code checks each contraint individually, then
+   * uses this method to enumerate all possible combinations of each matched 
+   * annotation type
+   * 
+   * @param instance current FSM instance
+   * @param nextState destination state of the transition
+   * @param annotsForConstraints array of matched annotations for each constraint
+   */
   protected void generateAllNewInstances(FSMInstance instance,
                                          int nextState,
                                          IntArrayList[] annotsForConstraints) {
     List<int[]> nextSteps = enumerateCombinations(annotsForConstraints);
+    
     for(int[] aStep : nextSteps) {
       FSMInstance nextInstance = instance.clone();
       // update the data in the next instance            
       nextInstance.state = nextState;
+      
       // Calculate the next annotation to look at: find the one starting
       // after the longest matched annotation.
       int nextAnnotationForInstance = instance.annotationIndex;
       int maxNextStep = -1;
+
       for(int i = 0; i < aStep.length; i++) {
         if(aStep[i]>= 0){
-          if(maxNextStep < aStep[i]) maxNextStep = aStep[i];
+          
+          if(maxNextStep < aStep[i]) 
+            maxNextStep = aStep[i];
+          
           if(nextAnnotationForInstance < followingAnnotation(aStep[i])) {
             nextAnnotationForInstance = followingAnnotation(aStep[i]);
           }
         }
       }
+      
       // When zero-length annotations are used, followingAnnotation(annIDx)
       // may not actually advance. To avoid infinite looping, we need to 
       // make sure that next annotation is greater than all the ones
       // already matched. 
       if(nextAnnotationForInstance <= maxNextStep) {
-        if(maxNextStep < annotation.length -2) {
+        if(maxNextStep < annotation.length - 2) {
           nextAnnotationForInstance = maxNextStep + 1;
         } else {
           // no more annotations
           nextAnnotationForInstance = Integer.MAX_VALUE;
         }
       }
+      
       nextInstance.annotationIndex = nextAnnotationForInstance;
       nextInstance.bindAnnotations(aStep);
       activeInstances.addLast(nextInstance);
@@ -1218,6 +1243,7 @@ public abstract class SPTBase extends AbstractLanguageAnalyser {
     // convert bindings to correct type
     Map<String, AnnotationSet> newBindings =
             new HashMap<String, AnnotationSet>(instance.bindings.size());
+    
     for(Map.Entry<String, IntArrayList> entry : instance.bindings.entrySet()) {
       AnnotationSet boundAnnots = new AnnotationSetImpl(document);
       for(int i = 0; i < entry.getValue().size(); i++) {
