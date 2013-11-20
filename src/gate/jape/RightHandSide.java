@@ -313,7 +313,8 @@ public class RightHandSide implements JapeConstants, java.io.Serializable
     // handler will be called instead so we can warn about the
     // deprecation and then forward the method onwards to the outputAS
     // so that the JAPE code will still work.
-    AnnotationSet annotations = (AnnotationSet)Proxy.newProxyInstance(
+    AnnotationSet annotations = outputAS;
+    /*(AnnotationSet)Proxy.newProxyInstance(
             getClass().getClassLoader(), new Class[] {AnnotationSet.class},
             new InvocationHandler() {
 
@@ -361,7 +362,7 @@ public class RightHandSide implements JapeConstants, java.io.Serializable
                 //pass the method on so that the JAPE code still works
                 return method.invoke(outputAS, args);
               }
-            });
+            });*/
     
     // run the action class
     try {
