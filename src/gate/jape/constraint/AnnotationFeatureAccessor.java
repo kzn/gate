@@ -63,7 +63,7 @@ public class AnnotationFeatureAccessor implements AnnotationAccessor {
     AnnotationFeatureAccessor a = (AnnotationFeatureAccessor)obj;
 
     if(featureName != a.getKey() && featureName != null
-            && !a.equals(a.getKey())) return false;
+            && !featureName.equals(a.getKey())) return false;
 
     return true;
   }
